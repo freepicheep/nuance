@@ -6,7 +6,6 @@ nuance handles dependency resolution, fetching, and lockfile management for Nush
 
 ## Install
 
-Support for the following platforms:
 ![Apple Silicon macOS](https://img.shields.io/badge/macOS%20Apple%20Silicon-000000?logo=apple&logoColor=white)
 ![Intel macOS](https://img.shields.io/badge/macOS%20Intel-000000?logo=apple&logoColor=white)
 ![ARM64 Linux](https://img.shields.io/badge/Linux%20ARM64-FCC624?logo=linux&logoColor=black)
