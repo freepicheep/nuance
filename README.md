@@ -6,13 +6,13 @@ nuance handles dependency resolution, fetching, and lockfile management for Nush
 
 ## Install
 
-```nu
+```bash
 cargo install --git https://github.com/freepicheep/nuance
 ```
 
 ## Quick Start
 
-```nu
+```bash
 # Initialize a new module project
 nuance init
 
