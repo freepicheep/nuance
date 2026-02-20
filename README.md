@@ -6,19 +6,21 @@ nuance handles dependency resolution, fetching, and lockfile management for Nush
 
 ## Install
 
-### Install prebuilt binaries via shell script
+Support for the following platforms:
+![Apple Silicon macOS](https://img.shields.io/badge/macOS%20Apple%20Silicon-000000?logo=apple&logoColor=white)
+![Intel macOS](https://img.shields.io/badge/macOS%20Intel-000000?logo=apple&logoColor=white)
+![ARM64 Linux](https://img.shields.io/badge/Linux%20ARM64-FCC624?logo=linux&logoColor=black)
+![x64 Linux](https://img.shields.io/badge/Linux%20x64-FCC624?logo=linux&logoColor=black)
+![ARM64 Windows](https://img.shields.io/badge/Windows%20ARM64-0078D6?logo=windows&logoColor=white)
+![x64 Windows](https://img.shields.io/badge/Windows%20x64-0078D6?logo=windows&logoColor=white)
 
-```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/freepicheep/nuance/releases/latest/download/nuance-installer.sh | sh
-```
+### Install prebuilt binaries via ...
 
-### Install prebuilt binaries via Homebrew
+- brew: `brew install freepicheep/tap/nuance`
+- mise: `mise use -g github:freepicheep/nuance`
+- shell script: `curl --proto '=https' --tlsv1.2 -LsSf https://github.com/freepicheep/nuance/releases/latest/download/nuance-installer.sh | sh`
 
-```sh
-brew install freepicheep/tap/nuance
-```
-
-### Install building from source via Cargo
+### Build from source via Cargo
 
 ```bash
 cargo install --git https://github.com/freepicheep/nuance
