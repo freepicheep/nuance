@@ -7,7 +7,7 @@ nuance handles dependency resolution, fetching, and lockfile management for Nush
 ## Install
 
 ```nu
-cargo install --path .
+cargo install --git https://github.com/freepicheep/nuance
 ```
 
 ## Quick Start
