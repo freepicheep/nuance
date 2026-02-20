@@ -6,6 +6,20 @@ nuance handles dependency resolution, fetching, and lockfile management for Nush
 
 ## Install
 
+### Install prebuilt binaries via shell script
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/freepicheep/nuance/releases/latest/download/nuance-installer.sh | sh
+```
+
+### Install prebuilt binaries via Homebrew
+
+```sh
+brew install freepicheep/tap/nuance
+```
+
+### Install building from source via Cargo
+
 ```bash
 cargo install --git https://github.com/freepicheep/nuance
 ```
