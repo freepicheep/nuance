@@ -3,6 +3,9 @@ name = "nuance"
 version = "0.1.0"
 edition = "2024"
 description = "A module manager for Nushell"
+license = "MIT"
+repository = "https://github.com/freepicheep/nuance"
+homepage = "https://github.com/freepicheep/nuance"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
@@ -14,3 +17,8 @@ sha2 = "0.10"
 thiserror = "2"
 toml = "0.8"
 walkdir = "2"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
