@@ -27,6 +27,10 @@ pub enum Commands {
 
     /// Resolve and install dependencies from mod.toml
     Install {
+        /// Install global modules (from ~/.config/nuance/config.toml)
+        #[arg(short = 'g', long)]
+        global: bool,
+
         /// Use lockfile only; error if missing or stale
         #[arg(long)]
         frozen: bool,
@@ -37,6 +41,10 @@ pub enum Commands {
 
     /// Add a package from a git repository URL
     Add {
+        /// Add to global config instead of local mod.toml
+        #[arg(short = 'g', long)]
+        global: bool,
+
         /// Git repository URL (e.g. https://github.com/user/nu-module)
         url: String,
 
@@ -55,6 +63,10 @@ pub enum Commands {
 
     /// Remove a package from mod.toml and .nu_modules/
     Remove {
+        /// Remove from global config instead of local mod.toml
+        #[arg(short = 'g', long)]
+        global: bool,
+
         /// Package name to remove
         name: String,
     },

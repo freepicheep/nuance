@@ -18,6 +18,9 @@ pub enum NuanceError {
         rev_b: String,
     },
 
+    #[error("config error: {0}")]
+    Config(String),
+
     #[error("no mod.toml found in {0}")]
     NoManifest(PathBuf),
 

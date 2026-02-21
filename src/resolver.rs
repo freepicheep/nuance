@@ -22,9 +22,16 @@ pub struct ResolvedDep {
 /// Errors on conflicts (same name, different source or rev).
 pub fn resolve(root_dir: &Path) -> Result<Vec<ResolvedDep>> {
     let manifest = Manifest::from_dir(root_dir)?;
+    resolve_from_deps(&manifest.dependencies)
+}
+
+/// Resolve dependencies from a pre-built dependency map (used by global install).
+///
+/// Returns a flat list of resolved dependencies, sorted by name.
+pub fn resolve_from_deps(deps: &HashMap<String, DependencySpec>) -> Result<Vec<ResolvedDep>> {
     let mut resolved: HashMap<String, ResolvedDep> = HashMap::new();
 
-    resolve_deps(&manifest.dependencies, &mut resolved)?;
+    resolve_deps(deps, &mut resolved)?;
 
     // Return sorted for deterministic output
     let mut deps: Vec<_> = resolved.into_values().collect();
