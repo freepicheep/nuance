@@ -39,13 +39,13 @@ pub enum Commands {
     /// Re-resolve all dependencies (ignore existing lockfile)
     Update,
 
-    /// Add a package from a git repository URL
+    /// Add a package from a git URL or owner/repo shorthand
     Add {
         /// Add to global config instead of local mod.toml
         #[arg(short = 'g', long)]
         global: bool,
 
-        /// Git repository URL (e.g. https://github.com/user/nu-module)
+        /// Git URL (e.g. https://github.com/user/nu-module) or owner/repo shorthand
         url: String,
 
         /// Pin to a specific tag

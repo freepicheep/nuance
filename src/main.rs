@@ -136,6 +136,13 @@ fn cmd_add(
 ) -> Result<()> {
     // Load existing manifest (or error if none)
     let mut manifest = Manifest::from_dir(dir)?;
+    let provider_base = if is_git_url(url.trim()) {
+        None
+    } else {
+        let config = GlobalConfig::load_or_default()?;
+        Some(config.default_git_provider_base_url()?)
+    };
+    let url = normalize_dependency_source(&url, provider_base.as_deref())?;
 
     // Derive package name from URL
     let pkg_name = git::repo_name_from_url(&url).ok_or_else(|| {
@@ -172,6 +179,12 @@ fn cmd_add_global(
     branch: Option<String>,
 ) -> Result<()> {
     let mut config = GlobalConfig::load()?;
+    let provider_base = if is_git_url(url.trim()) {
+        None
+    } else {
+        Some(config.default_git_provider_base_url()?)
+    };
+    let url = normalize_dependency_source(&url, provider_base.as_deref())?;
 
     // Derive package name from URL
     let pkg_name = git::repo_name_from_url(&url).ok_or_else(|| {
@@ -298,6 +311,49 @@ $env.config.hooks.env_change.PWD = (
     Ok(())
 }
 
+fn normalize_dependency_source(input: &str, provider_base_url: Option<&str>) -> Result<String> {
+    let trimmed = input.trim();
+
+    if trimmed.is_empty() {
+        return Err(error::NuanceError::Other(
+            "dependency source cannot be empty".to_string(),
+        ));
+    }
+
+    if is_git_url(trimmed) {
+        return Ok(trimmed.to_string());
+    }
+
+    if is_repo_shorthand(trimmed) {
+        let provider_base = provider_base_url.ok_or_else(|| {
+            error::NuanceError::Other(
+                "a default git provider is required for owner/repo shorthand".to_string(),
+            )
+        })?;
+        return Ok(format!("{provider_base}/{trimmed}"));
+    }
+
+    Err(error::NuanceError::Other(format!(
+        "invalid dependency source '{input}'; expected a git URL or owner/repo shorthand"
+    )))
+}
+
+fn is_git_url(value: &str) -> bool {
+    value.contains("://") || value.starts_with("git@")
+}
+
+fn is_repo_shorthand(value: &str) -> bool {
+    let mut parts = value.split('/');
+    let owner = parts.next().unwrap_or_default();
+    let repo = parts.next().unwrap_or_default();
+
+    parts.next().is_none()
+        && !owner.is_empty()
+        && !repo.is_empty()
+        && !owner.chars().any(char::is_whitespace)
+        && !repo.chars().any(char::is_whitespace)
+}
+
 /// Auto-detect the dependency spec from a URL, optionally with an explicit ref.
 ///
 /// If no tag/rev/branch is given, tries the latest tag first, then falls back
@@ -337,5 +393,58 @@ fn auto_detect_dep_spec(
             rev,
             branch,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn config_with_provider(provider: &str) -> GlobalConfig {
+        GlobalConfig {
+            modules_dir: None,
+            default_git_provider: provider.to_string(),
+            dependencies: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn normalize_dependency_source_passes_through_urls() {
+        let https = normalize_dependency_source("https://example.com/team/repo", None).unwrap();
+        assert_eq!(https, "https://example.com/team/repo");
+
+        let ssh = normalize_dependency_source("git@github.com:user/repo.git", None).unwrap();
+        assert_eq!(ssh, "git@github.com:user/repo.git");
+    }
+
+    #[test]
+    fn normalize_dependency_source_expands_repo_shorthand() {
+        let config = config_with_provider("github");
+        let provider = config.default_git_provider_base_url().unwrap();
+        let expanded =
+            normalize_dependency_source("freepicheep/nu-salesforce", Some(provider.as_str()))
+                .unwrap();
+        assert_eq!(expanded, "https://github.com/freepicheep/nu-salesforce");
+    }
+
+    #[test]
+    fn normalize_dependency_source_uses_custom_provider() {
+        let config = config_with_provider("gitlab");
+        let provider = config.default_git_provider_base_url().unwrap();
+        let expanded = normalize_dependency_source("group/repo", Some(provider.as_str())).unwrap();
+        assert_eq!(expanded, "https://gitlab.com/group/repo");
+    }
+
+    #[test]
+    fn normalize_dependency_source_rejects_invalid_input() {
+        let err = normalize_dependency_source("just-a-repo", None).unwrap_err();
+        assert!(err.to_string().contains("owner/repo shorthand"));
+    }
+
+    #[test]
+    fn normalize_dependency_source_requires_provider_for_shorthand() {
+        let err = normalize_dependency_source("owner/repo", None).unwrap_err();
+        assert!(err.to_string().contains("default git provider"));
     }
 }

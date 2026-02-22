@@ -1,9 +1,47 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::error::{NuanceError, Result};
 use crate::manifest::DependencySpec;
+
+const DEFAULT_GIT_PROVIDER: &str = "github";
+
+fn default_git_provider() -> String {
+    DEFAULT_GIT_PROVIDER.to_string()
+}
+
+fn known_provider_base_url(provider: &str) -> Option<&'static str> {
+    match provider {
+        "github" => Some("https://github.com"),
+        "gitlab" => Some("https://gitlab.com"),
+        "codeberg" => Some("https://codeberg.org"),
+        "bitbucket" => Some("https://bitbucket.org"),
+        _ => None,
+    }
+}
+
+fn normalize_provider_base_url(provider: &str) -> Option<String> {
+    let trimmed = provider.trim().trim_end_matches('/');
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let lowercase = trimmed.to_ascii_lowercase();
+    if let Some(base) = known_provider_base_url(&lowercase) {
+        return Some(base.to_string());
+    }
+
+    if trimmed.starts_with("https://") || trimmed.starts_with("http://") {
+        return Some(trimmed.to_string());
+    }
+
+    if trimmed.contains('.') && !trimmed.contains('/') && !trimmed.contains(' ') {
+        return Some(format!("https://{trimmed}"));
+    }
+
+    None
+}
 
 /// The global nuance config file: `~/.config/nuance/config.toml`.
 ///
@@ -13,8 +51,21 @@ pub struct GlobalConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub modules_dir: Option<String>,
 
+    #[serde(default = "default_git_provider")]
+    pub default_git_provider: String,
+
     #[serde(default)]
     pub dependencies: HashMap<String, DependencySpec>,
+}
+
+impl Default for GlobalConfig {
+    fn default() -> Self {
+        Self {
+            modules_dir: None,
+            default_git_provider: default_git_provider(),
+            dependencies: HashMap::new(),
+        }
+    }
 }
 
 impl GlobalConfig {
@@ -23,14 +74,26 @@ impl GlobalConfig {
         let path = global_config_path()?;
 
         if !path.exists() {
-            let config = GlobalConfig {
-                modules_dir: None,
-                dependencies: HashMap::new(),
-            };
+            let config = GlobalConfig::default();
             config.save()?;
             return Ok(config);
         }
 
+        Self::load_from_path(&path)
+    }
+
+    /// Load global config if present, otherwise return defaults without writing.
+    pub fn load_or_default() -> Result<Self> {
+        let path = global_config_path()?;
+
+        if !path.exists() {
+            return Ok(GlobalConfig::default());
+        }
+
+        Self::load_from_path(&path)
+    }
+
+    fn load_from_path(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(&path)?;
         let config: GlobalConfig = toml::from_str(&content)
             .map_err(|e| NuanceError::Config(format!("failed to parse {}: {e}", path.display())))?;
@@ -61,6 +124,16 @@ impl GlobalConfig {
         } else {
             global_modules_dir()
         }
+    }
+
+    /// Resolve the configured default git provider to a base URL.
+    pub fn default_git_provider_base_url(&self) -> Result<String> {
+        normalize_provider_base_url(&self.default_git_provider).ok_or_else(|| {
+            NuanceError::Config(format!(
+                "unsupported default_git_provider '{}'; use one of github, gitlab, codeberg, bitbucket, or a custom host like git.example.com",
+                self.default_git_provider
+            ))
+        })
     }
 }
 
@@ -100,6 +173,7 @@ mod tests {
     fn round_trip() {
         let config = GlobalConfig {
             modules_dir: None,
+            default_git_provider: "github".to_string(),
             dependencies: HashMap::from([(
                 "nu-utils".to_string(),
                 DependencySpec {
@@ -117,12 +191,14 @@ mod tests {
         assert_eq!(parsed.dependencies.len(), 1);
         assert!(parsed.dependencies.contains_key("nu-utils"));
         assert!(parsed.modules_dir.is_none());
+        assert_eq!(parsed.default_git_provider, "github");
     }
 
     #[test]
     fn round_trip_with_override() {
         let config = GlobalConfig {
             modules_dir: Some("/custom/path".to_string()),
+            default_git_provider: "gitlab".to_string(),
             dependencies: HashMap::new(),
         };
 
@@ -130,12 +206,14 @@ mod tests {
         let parsed: GlobalConfig = toml::from_str(&serialized).unwrap();
 
         assert_eq!(parsed.modules_dir.as_deref(), Some("/custom/path"));
+        assert_eq!(parsed.default_git_provider, "gitlab");
     }
 
     #[test]
     fn modules_dir_custom() {
         let config = GlobalConfig {
             modules_dir: Some("/custom/modules".to_string()),
+            default_git_provider: "github".to_string(),
             dependencies: HashMap::new(),
         };
         assert_eq!(
@@ -148,6 +226,7 @@ mod tests {
     fn modules_dir_default() {
         let config = GlobalConfig {
             modules_dir: None,
+            default_git_provider: "github".to_string(),
             dependencies: HashMap::new(),
         };
         let dir = config.modules_dir().unwrap();
@@ -166,5 +245,55 @@ mod tests {
 
         let lock = global_lock_path().unwrap();
         assert!(lock.ends_with("nuance/config.lock"));
+    }
+
+    #[test]
+    fn missing_provider_defaults_to_github() {
+        let toml = r#"
+modules_dir = "/tmp/nuance-modules"
+
+[dependencies]
+"#;
+        let parsed: GlobalConfig = toml::from_str(toml).unwrap();
+        assert_eq!(parsed.default_git_provider, "github");
+    }
+
+    #[test]
+    fn default_provider_base_url_resolves_known_aliases() {
+        let mut config = GlobalConfig::default();
+        assert_eq!(
+            config.default_git_provider_base_url().unwrap(),
+            "https://github.com"
+        );
+
+        config.default_git_provider = "gitlab".to_string();
+        assert_eq!(
+            config.default_git_provider_base_url().unwrap(),
+            "https://gitlab.com"
+        );
+    }
+
+    #[test]
+    fn default_provider_base_url_supports_custom_domain() {
+        let config = GlobalConfig {
+            modules_dir: None,
+            default_git_provider: "git.example.com".to_string(),
+            dependencies: HashMap::new(),
+        };
+        assert_eq!(
+            config.default_git_provider_base_url().unwrap(),
+            "https://git.example.com"
+        );
+    }
+
+    #[test]
+    fn default_provider_base_url_rejects_unknown_provider() {
+        let config = GlobalConfig {
+            modules_dir: None,
+            default_git_provider: "not-a-provider".to_string(),
+            dependencies: HashMap::new(),
+        };
+        let err = config.default_git_provider_base_url().unwrap_err();
+        assert!(err.to_string().contains("unsupported default_git_provider"));
     }
 }
