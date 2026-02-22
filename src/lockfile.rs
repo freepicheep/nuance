@@ -37,7 +37,9 @@ impl Lockfile {
     /// Serialize the lockfile to a TOML string with the header comment.
     pub fn to_toml_string(&self) -> Result<String> {
         let body = toml::to_string_pretty(self)?;
-        Ok(format!("# This file is generated automatically. Do not edit.\n{body}"))
+        Ok(format!(
+            "# This file is generated automatically. Do not edit.\n{body}"
+        ))
     }
 
     /// Write the lockfile to disk.

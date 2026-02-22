@@ -21,10 +21,7 @@ pub fn hash_directory(dir: &Path) -> Result<String> {
     entries.sort_by(|a, b| a.path().cmp(b.path()));
 
     for entry in entries {
-        let rel_path = entry
-            .path()
-            .strip_prefix(dir)
-            .unwrap_or(entry.path());
+        let rel_path = entry.path().strip_prefix(dir).unwrap_or(entry.path());
 
         // Hash the relative path
         hasher.update(rel_path.to_string_lossy().as_bytes());

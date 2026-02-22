@@ -132,11 +132,7 @@ pub enum RefKind {
 
 impl RefKind {
     /// Determine the ref kind from a dependency spec.
-    pub fn from_spec(
-        tag: &Option<String>,
-        rev: &Option<String>,
-        _branch: &Option<String>,
-    ) -> Self {
+    pub fn from_spec(tag: &Option<String>, rev: &Option<String>, _branch: &Option<String>) -> Self {
         if rev.is_some() {
             RefKind::Rev
         } else if tag.is_some() {

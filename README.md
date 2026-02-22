@@ -52,7 +52,34 @@ A nuance project is a directory containing:
 - **`mod.nu`** — the Nushell module entry point
 - **`mod.lock`** — auto-generated lockfile pinning exact commits (commit this to version control)
 
-Running `nuance install` fetches dependencies into `.nu_modules/`. Use them in your code by running `nuance use .nu_modules/module-name *`. 
+Running `nuance install` fetches dependencies into `.nu_modules/`.
+
+## Activation
+
+To make the installed modules available to `use` in Nushell without specifying their full `.nu_modules/` paths, you need to add the project's modules directory to your `$env.NU_LIB_DIRS`.
+
+Nuance provides two ways to do this:
+
+### 1. Manual Overlay (Recommended)
+`nuance install` automatically generates an `activate.nu` script inside the `.nu_modules` directory. This script adds `.nu_modules/` to your `$env.NU_LIB_DIRS` **and automatically imports** all installed modules into your active scope using `export use <module> *`.
+
+You can activate it using Nushell's `overlay` command:
+
+```bash
+overlay use .nu_modules/activate.nu
+```
+
+All commands from all installed modules are now available. When you're done, simply run `deactivate` (or `overlay hide activate`) to revert the environment changes and unload the modules.
+
+### 2. Auto-activation Hook
+If you want nuance projects to automatically update your module path when you `cd` into their directory (and remove it when you leave), add the nuance env_change hook to your `config.nu` or `env.nu`:
+
+```bash
+# Run this and append the output to your config
+nuance hook
+```
+
+> **Note**: Due to Nushell's static scoping rules, the auto-activation hook can only update `$env.NU_LIB_DIRS`. It cannot automatically import the module commands (you must still type `use <module> *` interactively). For fully automatic loading, use the Manual Overlay approach above.
 
 ## mod.toml
 
@@ -80,6 +107,7 @@ Each dependency must specify exactly one of `tag`, `branch`, or `rev`.
 | `nuance install --frozen` | Install from lockfile only (CI-friendly) |
 | `nuance update` | Re-resolve all dependencies |
 | `nuance remove <name>` | Remove a dependency |
+| `nuance hook` | Print the auto-activate hook for config.nu |
 
 ## License
 

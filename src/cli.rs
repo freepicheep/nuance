@@ -70,6 +70,9 @@ pub enum Commands {
         /// Package name to remove
         name: String,
     },
+
+    /// Print the Nushell env_change hook for auto-activating nuance projects
+    Hook,
 }
 
 pub fn parse() -> Cli {

@@ -32,9 +32,8 @@ impl GlobalConfig {
         }
 
         let content = std::fs::read_to_string(&path)?;
-        let config: GlobalConfig = toml::from_str(&content).map_err(|e| {
-            NuanceError::Config(format!("failed to parse {}: {e}", path.display()))
-        })?;
+        let config: GlobalConfig = toml::from_str(&content)
+            .map_err(|e| NuanceError::Config(format!("failed to parse {}: {e}", path.display())))?;
         Ok(config)
     }
 
@@ -139,7 +138,10 @@ mod tests {
             modules_dir: Some("/custom/modules".to_string()),
             dependencies: HashMap::new(),
         };
-        assert_eq!(config.modules_dir().unwrap(), PathBuf::from("/custom/modules"));
+        assert_eq!(
+            config.modules_dir().unwrap(),
+            PathBuf::from("/custom/modules")
+        );
     }
 
     #[test]

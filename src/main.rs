@@ -61,6 +61,7 @@ fn run(command: Commands) -> Result<()> {
                 cmd_remove(&cwd, name)
             }
         }
+        Commands::Hook => cmd_hook(),
     }
 }
 
@@ -230,6 +231,10 @@ fn cmd_remove(dir: &Path, name: String) -> Result<()> {
         eprintln!("Updated mod.lock");
     }
 
+    // Regenerate activate.nu from the updated manifest and lockfile state.
+    eprintln!("Regenerating activate.nu...");
+    installer::install(dir, false)?;
+
     Ok(())
 }
 
@@ -264,6 +269,32 @@ fn cmd_remove_global(name: String) -> Result<()> {
         eprintln!("Updated global lockfile");
     }
 
+    // Regenerate the activate.nu overlay with remaining global packages
+    eprintln!("Regenerating global activate.nu...");
+    installer::install_global(false)?;
+
+    Ok(())
+}
+
+fn cmd_hook() -> Result<()> {
+    let hook_script = r#"# nuance auto-activate hook — add this to your config.nu (or env.nu)
+$env.config.hooks.env_change.PWD = (
+    $env.config.hooks.env_change.PWD | default [] | append {|before, after|
+        # Remove previous directory's modules if it was a nuance project
+        if ($before | path join "mod.toml" | path exists) {
+            let old_modules = ($before | path join ".nu_modules")
+            $env.NU_LIB_DIRS = ($env.NU_LIB_DIRS | default [] | where { |it| $it != $old_modules })
+        }
+        # Add new directory's modules if it is a nuance project
+        if ($after | path join "mod.toml" | path exists) {
+            let new_modules = ($after | path join ".nu_modules")
+            if ($new_modules | path exists) and ($new_modules not-in ($env.NU_LIB_DIRS | default [])) {
+                $env.NU_LIB_DIRS = ($env.NU_LIB_DIRS | default [] | append $new_modules)
+            }
+        }
+    }
+)"#;
+    println!("{hook_script}");
     Ok(())
 }
 
