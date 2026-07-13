@@ -20,18 +20,18 @@ export def bump-cargo-version [
     --minor (-m) # bump the minor version (default)
     --patch (-p) # bump the patch version
 ] {
-    mut new_version = open Cargo.toml | get package.version
+    mut new_version = open Cargo.toml | get package.version | into semver
     if $version != null {
-        $new_version = $version
+        $new_version = $version | into semver
     } else if $major {
-        $new_version = $new_version | inc -M
+        $new_version = $new_version | semver bump major
     } else if $patch {
-        $new_version = $new_version | inc -p
+        $new_version = $new_version | semver bump patch
     } else {
-        $new_version = $new_version | inc -m
+        $new_version = $new_version | semver bump minor
     }
     let current_version = open Cargo.toml | get package.version
-    open Cargo.toml | update package.version $new_version | collect | save -f Cargo.toml
+    open Cargo.toml | update package.version ($new_version | into string) | collect | save -f Cargo.toml
     print $"Quiver updated from (ansi yellow)($current_version)(ansi reset) to (ansi green)($new_version)"
 }
 
