@@ -303,9 +303,10 @@ pub fn latest_tag(repo_path: &Path) -> Result<Option<String>> {
 
     repo.tag_foreach(|_oid, name| {
         if let Ok(name_str) = std::str::from_utf8(name)
-            && let Some(tag_name) = name_str.strip_prefix("refs/tags/") {
-                tags.push(tag_name.to_string());
-            }
+            && let Some(tag_name) = name_str.strip_prefix("refs/tags/")
+        {
+            tags.push(tag_name.to_string());
+        }
         true // continue iterating
     })?;
 
